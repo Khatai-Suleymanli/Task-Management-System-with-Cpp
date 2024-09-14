@@ -90,6 +90,6 @@ Support for recurring tasks.
 Implementing a GUI (Graphical User Interface).
 Support for filtering tasks based on different criteria (category, priority, status).
 License
-This project is licensed under the MIT License. See the LICENSE file for more details.
 
+Thanks for checking out my repository.
 
