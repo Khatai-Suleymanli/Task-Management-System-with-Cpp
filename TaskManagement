@@ -1,0 +1,231 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <ctime>
+#include <algorithm>
+#include "json.hpp" // JSON library, add this from https://github.com/nlohmann/json
+
+using json = nlohmann::json;
+
+struct Task {
+    std::string name;
+    std::string category;
+    std::string priority;
+    std::string dueDate;
+    std::string status;
+    
+    Task(std::string n, std::string c, std::string p, std::string d, std::string s)
+        : name(n), category(c), priority(p), dueDate(d), status(s) {}
+};
+
+class TaskManager {
+private:
+    std::vector<Task> tasks;
+    const std::string fileName = "tasks.json";
+
+public:
+    TaskManager() {
+        loadTasksFromFile();
+    }
+
+    void addTask() {
+        std::string name, category, priority, dueDate;
+        std::cout << "Enter task name: ";
+        std::getline(std::cin, name);
+        std::cout << "Enter category (e.g., Work, Personal): ";
+        std::getline(std::cin, category);
+        std::cout << "Enter priority (Low, Medium, High): ";
+        std::getline(std::cin, priority);
+        std::cout << "Enter due date (YYYY-MM-DD): ";
+        std::getline(std::cin, dueDate);
+        
+        Task newTask(name, category, priority, dueDate, "Pending");
+        tasks.push_back(newTask);
+        saveTasksToFile();
+    }
+
+    void deleteTask() {
+        std::string name;
+        std::cout << "Enter task name to delete: ";
+        std::getline(std::cin, name);
+        
+        tasks.erase(std::remove_if(tasks.begin(), tasks.end(),
+            [&](Task& task) { return task.name == name; }),
+            tasks.end());
+            
+        saveTasksToFile();
+    }
+
+    void updateTaskStatus() {
+        std::string name, status;
+        std::cout << "Enter task name to update status: ";
+        std::getline(std::cin, name);
+        std::cout << "Enter new status (Pending, Completed, Overdue): ";
+        std::getline(std::cin, status);
+        
+        for (Task& task : tasks) {
+            if (task.name == name) {
+                task.status = status;
+                break;
+            }
+        }
+        saveTasksToFile();
+    }
+
+    void listTasks() {
+        if (tasks.empty()) {
+            std::cout << "No tasks found!" << std::endl;
+            return;
+        }
+        
+        for (const Task& task : tasks) {
+            std::cout << "Task Name: " << task.name << "\n";
+            std::cout << "Category: " << task.category << "\n";
+            std::cout << "Priority: " << task.priority << "\n";
+            std::cout << "Due Date: " << task.dueDate << "\n";
+            std::cout << "Status: " << task.status << "\n";
+            std::cout << "-----------------------------\n";
+        }
+    }
+
+    void searchTask() {
+        std::string keyword;
+        std::cout << "Enter keyword to search: ";
+        std::getline(std::cin, keyword);
+
+        bool found = false;
+        for (const Task& task : tasks) {
+            if (task.name.find(keyword) != std::string::npos ||
+                task.category.find(keyword) != std::string::npos) {
+                std::cout << "Task Name: " << task.name << "\n";
+                std::cout << "Category: " << task.category << "\n";
+                std::cout << "Priority: " << task.priority << "\n";
+                std::cout << "Due Date: " << task.dueDate << "\n";
+                std::cout << "Status: " << task.status << "\n";
+                std::cout << "-----------------------------\n";
+                found = true;
+            }
+        }
+
+        if (!found) {
+            std::cout << "No tasks matched your search!" << std::endl;
+        }
+    }
+
+    void sortTasksByDeadline() {
+        std::sort(tasks.begin(), tasks.end(), [](const Task& a, const Task& b) {
+            return a.dueDate < b.dueDate;
+        });
+
+        saveTasksToFile();
+        std::cout << "Tasks sorted by due date.\n";
+    }
+
+    void sortTasksByPriority() {
+        std::map<std::string, int> priorityMap = {
+            {"Low", 1}, {"Medium", 2}, {"High", 3}
+        };
+        
+        std::sort(tasks.begin(), tasks.end(), [&](const Task& a, const Task& b) {
+            return priorityMap[a.priority] > priorityMap[b.priority];
+        });
+
+        saveTasksToFile();
+        std::cout << "Tasks sorted by priority.\n";
+    }
+
+private:
+    void saveTasksToFile() {
+        json j;
+        for (const Task& task : tasks) {
+            j.push_back({
+                {"name", task.name},
+                {"category", task.category},
+                {"priority", task.priority},
+                {"dueDate", task.dueDate},
+                {"status", task.status}
+            });
+        }
+
+        std::ofstream file(fileName);
+        if (file.is_open()) {
+            file << j.dump(4);
+            file.close();
+        }
+    }
+
+    void loadTasksFromFile() {
+        std::ifstream file(fileName);
+        if (file.is_open()) {
+            json j;
+            file >> j;
+
+            for (const auto& item : j) {
+                tasks.emplace_back(
+                    item["name"].get<std::string>(),
+                    item["category"].get<std::string>(),
+                    item["priority"].get<std::string>(),
+                    item["dueDate"].get<std::string>(),
+                    item["status"].get<std::string>()
+                );
+            }
+            file.close();
+        }
+    }
+};
+
+void displayMenu() {
+    std::cout << "Task Management System Menu:\n";
+    std::cout << "1. Add Task\n";
+    std::cout << "2. Delete Task\n";
+    std::cout << "3. Update Task Status\n";
+    std::cout << "4. List All Tasks\n";
+    std::cout << "5. Search Task\n";
+    std::cout << "6. Sort Tasks by Deadline\n";
+    std::cout << "7. Sort Tasks by Priority\n";
+    std::cout << "8. Exit\n";
+    std::cout << "Choose an option: ";
+}
+
+int main() {
+    TaskManager taskManager;
+    int option;
+
+    do {
+        displayMenu();
+        std::cin >> option;
+        std::cin.ignore(); // Ignore newline after selecting option
+
+        switch (option) {
+            case 1:
+                taskManager.addTask();
+                break;
+            case 2:
+                taskManager.deleteTask();
+                break;
+            case 3:
+                taskManager.updateTaskStatus();
+                break;
+            case 4:
+                taskManager.listTasks();
+                break;
+            case 5:
+                taskManager.searchTask();
+                break;
+            case 6:
+                taskManager.sortTasksByDeadline();
+                break;
+            case 7:
+                taskManager.sortTasksByPriority();
+                break;
+            case 8:
+                std::cout << "Exiting...\n";
+                break;
+            default:
+                std::cout << "Invalid option. Please try again.\n";
+        }
+    } while (option != 8);
+
+    return 0;
+}
